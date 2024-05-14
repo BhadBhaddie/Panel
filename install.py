@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import subprocess, os, random, string, sys, shutil, socket, zipfile, urllib2
+import subprocess, os, random, string, sys, shutil, socket, zipfile, urllib3
 from itertools import cycle, izip
 from zipfile import ZipFile
-from urllib2 import Request, urlopen, URLError, HTTPError
+from urllib3 import Request, urlopen, URLError, HTTPError
 
 rDownloadURL = {"main": "http://xtream-ui.org/main_xtreamcodes_reborn.tar.gz", "sub": "http://xtream-ui.org/sub_xtreamcodes_reborn.tar.gz"}
 rPackages = ["libcurl3", "libxslt1-dev", "libgeoip-dev", "e2fsprogs", "wget", "mcrypt", "nscd", "htop", "zip", "unzip", "mc", "libjemalloc1", "python-paramiko", "mysql-server"]
