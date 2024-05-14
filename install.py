@@ -3,16 +3,30 @@
 import subprocess, os, random, string, sys, shutil, socket, zipfile, urllib3
 from itertools import cycle
 from zipfile import ZipFile
-from urllib3 import Request, urlopen, URLError, HTTPError
+from urllib.request import urlopen, URLError, HTTPError
+import base64
 
 rDownloadURL = {"main": "http://xtream-ui.org/main_xtreamcodes_reborn.tar.gz", "sub": "http://xtream-ui.org/sub_xtreamcodes_reborn.tar.gz"}
-rPackages = ["libcurl3", "libxslt1-dev", "libgeoip-dev", "e2fsprogs", "wget", "mcrypt", "nscd", "htop", "zip", "unzip", "mc", "libjemalloc1", "python-paramiko", "mysql-server"]
+rPackages = ["libcurl4", "libxslt1-dev", "libgeoip-dev", "e2fsprogs", "wget", "mcrypt", "nscd", "htop", "zip", "unzip", "mc", "libjemalloc1", "python-paramiko", "mysql-server"]
 rInstall = {"MAIN": "main", "LB": "sub"}
 rUpdate = {"UPDATE": "update"}
-rMySQLCnf = "IyBYdHJlYW0gQ29kZXMKCltjbGllbnRdCnBvcnQgICAgICAgICAgICA9IDMzMDYKCltteXNxbGRfc2FmZV0KbmljZSAgICAgICAgICAgID0gMAoKW215c3FsZF0KZGVmYXVsdC1hdXRoZW50aWNhdGlvbi1wbHVnaW49bXlzcWxfbmF0aXZlX3Bhc3N3b3JkCnVzZXIgICAgICAgICAgICA9IG15c3FsCnBvcnQgICAgICAgICAgICA9IDc5OTkKYmFzZWRpciAgICAgICAgID0gL3VzcgpkYXRhZGlyICAgICAgICAgPSAvdmFyL2xpYi9teXNxbAp0bXBkaXIgICAgICAgICAgPSAvdG1wCgpsYy1tZXNzYWdlcy1kaXIgPSAvdXNyL3NoYXJlL215c3FsCnNraXAtZXh0ZXJuYWwtbG9ja2luZwpza2lwLW5hbWUtcmVzb2x2ZT0xCgpiaW5kLWFkZHJlc3MgICAgICAgICAgICA9ICoKCmtleV9idWZmZXJfc2l6ZSA9IDEyOE0KbXlpc2FtX3NvcnRfYnVmZmVyX3NpemUgPSA0TQptYXhfYWxsb3dlZF9wYWNrZXQgICAgICA9IDY0TQpteWlzYW0tcmVjb3Zlci1vcHRpb25zID0gQkFDS1VQCm1heF9sZW5ndGhfZm9yX3NvcnRfZGF0YSA9IDgxOTIKcXVlcnlfY2FjaGVfbGltaXQgPSAwCnF1ZXJ5X2NhY2hlX3NpemUgPSAwCnF1ZXJ5X2NhY2hlX3R5cGUgPSAwCgpleHBpcmVfbG9nc19kYXlzID0gMTAKI2JpbmxvZ19leHBpcmVfbG9nc19zZWNvbmRzID0gODY0MDAwCm1heF9iaW5sb2dfc2l6ZSA9IDEwME0KdHJhbnNhY3Rpb25faXNvbGF0aW9uID0gUkVBRC1DT01NSVRURUQKbWF4X2Nvbm5lY3Rpb25zICA9IDEwMDAwCm9wZW5fZmlsZXNfbGltaXQgPSAxMDI0MAppbm5vZGJfb3Blbl9maWxlcyA9MTAyNDAKbWF4X2Nvbm5lY3RfZXJyb3JzID0gNDA5Ngp0YWJsZV9vcGVuX2NhY2hlID0gNDA5Ngp0YWJsZV9kZWZpbml0aW9uX2NhY2hlID0gNDA5Ngp0bXBfdGFibGVfc2l6ZSA9IDFHCm1heF9oZWFwX3RhYmxlX3NpemUgPSAxRwptYXhfZXhlY3V0aW9uX3RpbWUgPSAwCmJhY2tfbG9nID0gNDA5NgoKaW5ub2RiX2J1ZmZlcl9wb29sX3NpemUgPSA4Rwppbm5vZGJfYnVmZmVyX3Bvb2xfaW5zdGFuY2VzID0gOAppbm5vZGJfcmVhZF9pb190aHJlYWRzID0gNjQKaW5ub2RiX3dyaXRlX2lvX3RocmVhZHMgPSA2NAppbm5vZGJfdGhyZWFkX2NvbmN1cnJlbmN5ID0gMAppbm5vZGJfZmx1c2hfbG9nX2F0X3RyeF9jb21taXQgPSAwCmlubm9kYl9mbHVzaF9tZXRob2QgPSBPX0RJUkVDVApwZXJmb3JtYW5jZV9zY2hlbWEgPSAwCmlubm9kYi1maWxlLXBlci10YWJsZSA9IDEKaW5ub2RiX2lvX2NhcGFjaXR5ID0gMTAwMDAKaW5ub2RiX3RhYmxlX2xvY2tzID0gMAppbm5vZGJfbG9ja193YWl0X3RpbWVvdXQgPSAwCmlubm9kYl9kZWFkbG9ja19kZXRlY3QgPSAwCmlubm9kYl9sb2dfZmlsZV9zaXplID0gMUcKCnNxbC1tb2RlPSJOT19FTkdJTkVfU1VCU1RJVFVUSU9OIgoKCltteXNxbGR1bXBdCnF1aWNrCnF1b3RlLW5hbWVzCm1heF9hbGxvd2VkX3BhY2tldCAgICAgID0gMTI4TQpjb21wbGV0ZS1pbnNlcnQKCltteXNxbF0KCltpc2FtY2hrXQprZXlfYnVmZmVyX3NpemUgICAgICAgICAgICAgID0gMTZN==".decode("base64")
-rMySQLServiceFile = "IyBNeVNRTCBzeXN0ZW1kIHNlcnZpY2UgZmlsZQoKW1VuaXRdCkRlc2NyaXB0aW9uPU15U1FMIENvbW11bml0eSBTZXJ2ZXIKQWZ0ZXI9bmV0d29yay50YXJnZXQKCltJbnN0YWxsXQpXYW50ZWRCeT1tdWx0aS11c2VyLnRhcmdldAoKW1NlcnZpY2VdClR5cGU9Zm9ya2luZwpVc2VyPW15c3FsCkdyb3VwPW15c3FsClBJREZpbGU9L3J1bi9teXNxbGQvbXlzcWxkLnBpZApQZXJtaXNzaW9uc1N0YXJ0T25seT10cnVlCkV4ZWNTdGFydFByZT0vdXNyL3NoYXJlL215c3FsL215c3FsLXN5c3RlbWQtc3RhcnQgcHJlCkV4ZWNTdGFydD0vdXNyL3NiaW4vbXlzcWxkIC0tZGFlbW9uaXplIC0tcGlkLWZpbGU9L3J1bi9teXNxbGQvbXlzcWxkLnBpZCAtLW1heC1leGVjdXRpb24tdGltZT0wCkVudmlyb25tZW50RmlsZT0tL2V0Yy9teXNxbC9teXNxbGQKVGltZW91dFNlYz02MDAKUmVzdGFydD1vbi1mYWlsdXJlClJ1bnRpbWVEaXJlY3Rvcnk9bXlzcWxkClJ1bnRpbWVEaXJlY3RvcnlNb2RlPTc1NQpMaW1pdE5PRklMRT01MDAw==".decode("base64")
-rSysCtl = "IyBmcm9tIFhVSS5vbmUgc2VydmVyCm5ldC5jb3JlLnNvbWF4Y29ubiA9IDY1NTM1MApuZXQuaXB2NC5yb3V0ZS5mbHVzaD0xCm5ldC5pcHY0LnRjcF9ub19tZXRyaWNzX3NhdmU9MQpuZXQuaXB2NC50Y3BfbW9kZXJhdGVfcmN2YnVmID0gMQpmcy5maWxlLW1heCA9IDY4MTU3NDQKZnMuYWlvLW1heC1uciA9IDY4MTU3NDQKZnMubnJfb3BlbiA9IDY4MTU3NDQKbmV0LmlwdjQuaXBfbG9jYWxfcG9ydF9yYW5nZSA9IDEwMjQgNjUwMDAKbmV0LmlwdjQudGNwX3NhY2sgPSAxCm5ldC5pcHY0LnRjcF9ybWVtID0gMTAwMDAwMDAgMTAwMDAwMDAgMTAwMDAwMDAKbmV0LmlwdjQudGNwX3dtZW0gPSAxMDAwMDAwMCAxMDAwMDAwMCAxMDAwMDAwMApuZXQuaXB2NC50Y3BfbWVtID0gMTAwMDAwMDAgMTAwMDAwMDAgMTAwMDAwMDAKbmV0LmNvcmUucm1lbV9tYXggPSA1MjQyODcKbmV0LmNvcmUud21lbV9tYXggPSA1MjQyODcKbmV0LmNvcmUucm1lbV9kZWZhdWx0ID0gNTI0Mjg3Cm5ldC5jb3JlLndtZW1fZGVmYXVsdCA9IDUyNDI4NwpuZXQuY29yZS5vcHRtZW1fbWF4ID0gNTI0Mjg3Cm5ldC5jb3JlLm5ldGRldl9tYXhfYmFja2xvZyA9IDMwMDAwMApuZXQuaXB2NC50Y3BfbWF4X3N5bl9iYWNrbG9nID0gMzAwMDAwCm5ldC5uZXRmaWx0ZXIubmZfY29ubnRyYWNrX21heD0xMjE1MTk2NjA4Cm5ldC5pcHY0LnRjcF93aW5kb3dfc2NhbGluZyA9IDEKdm0ubWF4X21hcF9jb3VudCA9IDY1NTMwMApuZXQuaXB2NC50Y3BfbWF4X3R3X2J1Y2tldHMgPSA1MDAwMApuZXQuaXB2Ni5jb25mLmFsbC5kaXNhYmxlX2lwdjYgPSAxCm5ldC5pcHY2LmNvbmYuZGVmYXVsdC5kaXNhYmxlX2lwdjYgPSAxCm5ldC5pcHY2LmNvbmYubG8uZGlzYWJsZV9pcHY2ID0gMQprZXJuZWwuc2htbWF4PTEzNDIxNzcyOAprZXJuZWwuc2htYWxsPTEzNDIxNzcyOAp2bS5vdmVyY29tbWl0X21lbW9yeSA9IDEKbmV0LmlwdjQudGNwX3R3X3JldXNlPTEKdm0uc3dhcHBpbmVzcz0xMA==".decode("base64")
+rMySQLCnf = "IyBYdHJlYW0gQ29kZXMKCltjbGllbnRdCnBvcnQgICAgICAgICAgICA9IDMzMDYKCltteXNxbGRfc2FmZV0KbmljZSAgICAgICAgICAgID0gMAoKW215c3FsZF0KZGVmYXVsdC1hdXRoZW50aWNhdGlvbi1wbHVnaW49bXlzcWxfbmF0aXZlX3Bhc3N3b3JkCnVzZXIgICAgICAgICAgICA9IG15c3FsCnBvcnQgICAgICAgICAgICA9IDc5OTkKYmFzZWRpciAgICAgICAgID0gL3VzcgpkYXRhZGlyICAgICAgICAgPSAvdmFyL2xpYi9teXNxbAp0bXBkaXIgICAgICAgICAgPSAvdG1wCgpsYy1tZXNzYWdlcy1kaXIgPSAvdXNyL3NoYXJlL215c3FsCnNraXAtZXh0ZXJuYWwtbG9ja2luZwpza2lwLW5hbWUtcmVzb2x2ZT0xCgpiaW5kLWFkZHJlc3MgICAgICAgICAgICA9ICoKCmtleV9idWZmZXJfc2l6ZSA9IDEyOE0KbXlpc2FtX3NvcnRfYnVmZmVyX3NpemUgPSA0TQptYXhfYWxsb3dlZF9wYWNrZXQgICAgICA9IDY0TQpteWlzYW0tcmVjb3Zlci1vcHRpb25zID0gQkFDS1VQCm1heF9sZW5ndGhfZm9yX3NvcnRfZGF0YSA9IDgxOTIKcXVlcnlfY2FjaGVfbGltaXQgPSAwCnF1ZXJ5X2NhY2hlX3NpemUgPSAwCnF1ZXJ5X2NhY2hlX3R5cGUgPSAwCgpleHBpcmVfbG9nc19kYXlzID0gMTAKI2JpbmxvZ19leHBpcmVfbG9nc19zZWNvbmRzID0gODY0MDAwCm1heF9iaW5sb2dfc2l6ZSA9IDEwME0KdHJhbnNhY3Rpb25faXNvbGF0aW9uID0gUkVBRC1DT01NSVRURUQKbWF4X2Nvbm5lY3Rpb25zICA9IDEwMDAwCm9wZW5fZmlsZXNfbGltaXQgPSAxMDI0MAppbm5vZGJfb3Blbl9maWxlcyA9MTAyNDAKbWF4X2Nvbm5lY3RfZXJyb3JzID0gNDA5Ngp0YWJsZV9vcGVuX2NhY2hlID0gNDA5Ngp0YWJsZV9kZWZpbml0aW9uX2NhY2hlID0gNDA5Ngp0bXBfdGFibGVfc2l6ZSA9IDFHCm1heF9oZWFwX3RhYmxlX3NpemUgPSAxRwptYXhfZXhlY3V0aW9uX3RpbWUgPSAwCmJhY2tfbG9nID0gNDA5NgoKaW5ub2RiX2J1ZmZlcl9wb29sX3NpemUgPSA4Rwppbm5vZGJfYnVmZmVyX3Bvb2xfaW5zdGFuY2VzID0gOAppbm5vZGJfcmVhZF9pb190aHJlYWRzID0gNjQKaW5ub2RiX3dyaXRlX2lvX3RocmVhZHMgPSA2NAppbm5vZGJfdGhyZWFkX2NvbmN1cnJlbmN5ID0gMAppbm5vZGJfZmx1c2hfbG9nX2F0X3RyeF9jb21taXQgPSAwCmlubm9kYl9mbHVzaF9tZXRob2QgPSBPX0RJUkVDVApwZXJmb3JtYW5jZV9zY2hlbWEgPSAwCmlubm9kYi1maWxlLXBlci10YWJsZSA9IDEKaW5ub2RiX2lvX2NhcGFjaXR5ID0gMTAwMDAKaW5ub2RiX3RhYmxlX2xvY2tzID0gMAppbm5vZGJfbG9ja193YWl0X3RpbWVvdXQgPSAwCmlubm9kYl9kZWFkbG9ja19kZXRlY3QgPSAwCmlubm9kYl9sb2dfZmlsZV9zaXplID0gMUcKCnNxbC1tb2RlPSJOT19FTkdJTkVfU1VCU1RJVFVUSU9OIgoKCltteXNxbGR1bXBdCnF1aWNrCnF1b3RlLW5hbWVzCm1heF9hbGxvd2VkX3BhY2tldCAgICAgID0gMTI4TQpjb21wbGV0ZS1pbnNlcnQKCltteXNxbF0KCltpc2FtY2hrXQprZXlfYnVmZmVyX3NpemUgICAgICAgICAgICAgID0gMTZN=="
+rMySQLServiceFile = "IyBNeVNRTCBzeXN0ZW1kIHNlcnZpY2UgZmlsZQoKW1VuaXRdCkRlc2NyaXB0aW9uPU15U1FMIENvbW11bml0eSBTZXJ2ZXIKQWZ0ZXI9bmV0d29yay50YXJnZXQKCltJbnN0YWxsXQpXYW50ZWRCeT1tdWx0aS11c2VyLnRhcmdldAoKW1NlcnZpY2VdClR5cGU9Zm9ya2luZwpVc2VyPW15c3FsCkdyb3VwPW15c3FsClBJREZpbGU9L3J1bi9teXNxbGQvbXlzcWxkLnBpZApQZXJtaXNzaW9uc1N0YXJ0T25seT10cnVlCkV4ZWNTdGFydFByZT0vdXNyL3NoYXJlL215c3FsL215c3FsLXN5c3RlbWQtc3RhcnQgcHJlCkV4ZWNTdGFydD0vdXNyL3NiaW4vbXlzcWxkIC0tZGFlbW9uaXplIC0tcGlkLWZpbGU9L3J1bi9teXNxbGQvbXlzcWxkLnBpZCAtLW1heC1leGVjdXRpb24tdGltZT0wCkVudmlyb25tZW50RmlsZT0tL2V0Yy9teXNxbC9teXNxbGQKVGltZW91dFNlYz02MDAKUmVzdGFydD1vbi1mYWlsdXJlClJ1bnRpbWVEaXJlY3Rvcnk9bXlzcWxkClJ1bnRpbWVEaXJlY3RvcnlNb2RlPTc1NQpMaW1pdE5PRklMRT01MDAw=="
+rSysCtl = "IyBmcm9tIFhVSS5vbmUgc2VydmVyCm5ldC5jb3JlLnNvbWF4Y29ubiA9IDY1NTM1MApuZXQuaXB2NC5yb3V0ZS5mbHVzaD0xCm5ldC5pcHY0LnRjcF9ub19tZXRyaWNzX3NhdmU9MQpuZXQuaXB2NC50Y3BfbW9kZXJhdGVfcmN2YnVmID0gMQpmcy5maWxlLW1heCA9IDY4MTU3NDQKZnMuYWlvLW1heC1uciA9IDY4MTU3NDQKZnMubnJfb3BlbiA9IDY4MTU3NDQKbmV0LmlwdjQuaXBfbG9jYWxfcG9ydF9yYW5nZSA9IDEwMjQgNjUwMDAKbmV0LmlwdjQudGNwX3NhY2sgPSAxCm5ldC5pcHY0LnRjcF9ybWVtID0gMTAwMDAwMDAgMTAwMDAwMDAgMTAwMDAwMDAKbmV0LmlwdjQudGNwX3dtZW0gPSAxMDAwMDAwMCAxMDAwMDAwMCAxMDAwMDAwMApuZXQuaXB2NC50Y3BfbWVtID0gMTAwMDAwMDAgMTAwMDAwMDAgMTAwMDAwMDAKbmV0LmNvcmUucm1lbV9tYXggPSA1MjQyODcKbmV0LmNvcmUud21lbV9tYXggPSA1MjQyODcKbmV0LmNvcmUucm1lbV9kZWZhdWx0ID0gNTI0Mjg3Cm5ldC5jb3JlLndtZW1fZGVmYXVsdCA9IDUyNDI4NwpuZXQuY29yZS5vcHRtZW1fbWF4ID0gNTI0Mjg3Cm5ldC5jb3JlLm5ldGRldl9tYXhfYmFja2xvZyA9IDMwMDAwMApuZXQuaXB2NC50Y3BfbWF4X3N5bl9iYWNrbG9nID0gMzAwMDAwCm5ldC5uZXRmaWx0ZXIubmZfY29ubnRyYWNrX21heD0xMjE1MTk2NjA4Cm5ldC5pcHY0LnRjcF93aW5kb3dfc2NhbGluZyA9IDEKdm0ubWF4X21hcF9jb3VudCA9IDY1NTMwMApuZXQuaXB2NC50Y3BfbWF4X3R3X2J1Y2tldHMgPSA1MDAwMApuZXQuaXB2Ni5jb25mLmFsbC5kaXNhYmxlX2lwdjYgPSAxCm5ldC5pcHY2LmNvbmYuZGVmYXVsdC5kaXNhYmxlX2lwdjYgPSAxCm5ldC5pcHY2LmNvbmYubG8uZGlzYWJsZV9pcHY2ID0gMQprZXJuZWwuc2htbWF4PTEzNDIxNzcyOAprZXJuZWwuc2htYWxsPTEzNDIxNzcyOAp2bS5vdmVyY29tbWl0X21lbW9yeSA9IDEKbmV0LmlwdjQudGNwX3R3X3JldXNlPTEKdm0uc3dhcHBpbmVzcz0xMA=="
+
+rMySQLCnfdecoded = base64.b64decode(rMySQLCnf).decode('utf-8')
+rMySQLServiceFiledecoded = base64.b64decode(rMySQLServiceFile).decode('utf-8')
+rSysCtldecoded = base64.b64decode(rSysCtl).decode('utf-8')
 # i am lazy to prepare echo versions with escaped characters, use base64 decode/encode to read or change these.
+
+print("Decoded rMySQLCnf:")
+print(rMySQLCnfdecoded)
+
+print("\nDecoded rMySQLServiceFile:")
+print(rMySQLServiceFiledecoded)
+
+print("\nDecoded rSysCtl:")
+print(rSysCtldecoded)
 
 class col:
     HEADER = '\033[95m'
@@ -36,13 +50,30 @@ def getVersion():
     try: return subprocess.check_output("lsb_release -d".split()).split(":")[-1].strip()
     except: return ""
 
+# Define ASCII box drawing characters globally
+box_top_left = '+'
+box_horizontal = '-'
+box_top_right = '+'
+box_vertical = '|'
+box_bottom_left = '+'
+box_bottom_right = '+'
+
 def printc(rText, rColour=col.OKBLUE, rPadding=0):
-    print("%s ┌──────────────────────────────────────────┐ %s" % (rColour, col.ENDC))
-    for i in range(rPadding): print( "%s │                                          │ %s" % (rColour, col.ENDC))
-    print("%s │ %s%s%s │ %s" % (rColour, " "*(20-(len(rText)/2)), rText, " "*(40-(20-(len(rText)/2))-len(rText)), col.ENDC))
-    for i in range(rPadding): print( "%s │                                          │ %s" % (rColour, col.ENDC))
-    print("%s └──────────────────────────────────────────┘ %s" % (rColour, col.ENDC))
+    # Calculate padding length as integer
+    padding_length = int(20 - (len(rText) / 2))
+    
+    # Print the text with the encoded box drawing characters
+    print(f"{rColour} {box_top_left}{box_horizontal*40}{box_top_right} {col.ENDC}")
+    for i in range(rPadding): 
+        print(f"{rColour} {box_vertical}{' '*38}{box_vertical} {col.ENDC}")
+    print(f"{rColour} {box_vertical}{' '*padding_length}{rText}{' '*(40 - padding_length - len(rText))}{box_vertical} {col.ENDC}")
+    for i in range(rPadding): 
+        print(f"{rColour} {box_vertical}{' '*38}{box_vertical} {col.ENDC}")
+    print(f"{rColour} {box_bottom_left}{box_horizontal*40}{box_bottom_right} {col.ENDC}")
     print(" ")
+
+
+
 
 def prepare(rType="MAIN"):
     global rPackages
@@ -93,7 +124,7 @@ def install(rType="MAIN"):
 def update(rType="MAIN"):
     if rType == "UPDATE":
         printc("Enter the link of release_xyz.zip file:", col.WARNING)
-        rlink = raw_input('Example: https://github.com/xtream-ui-org/xtream-ui-install/raw/master/files/release_22f.zip\n\nNow enter the link:\n\n')
+        rlink = input('Example: https://github.com/xtream-ui-org/xtream-ui-install/raw/master/files/release_22f.zip\n\nNow enter the link:\n\n')
     else:
         rlink = "https://github.com/xtream-ui-org/xtream-ui-install/raw/master/files/release_22f.zip"
         printc("Installing Admin Panel")
@@ -103,9 +134,9 @@ def update(rType="MAIN"):
        'Accept-Encoding': 'none',
        'Accept-Language': 'en-US,en;q=0.8',
        'Connection': 'keep-alive'}
-    req = urllib2.Request(rlink, headers=hdr)
+    req = urllib3.Request(rlink, headers=hdr)
     try:
-    	urllib2.urlopen(req)
+    	urllib3.urlopen(req)
     except:
         printc("Invalid download URL!", col.FAIL)
         return False
@@ -144,12 +175,12 @@ def mysql(rUsername, rPassword):
         os.system("service mysql restart > /dev/null")
     printc("Enter MySQL Root Password:", col.WARNING)
     for i in range(5):
-        rMySQLRoot = raw_input("  ")
+        rMySQLRoot = input("  ")
         print(" ")
         if len(rMySQLRoot) > 0: rExtra = " -p%s" % rMySQLRoot
         else: rExtra = ""
         printc("Drop existing & create database? Y/N", col.WARNING)
-        if raw_input("  ").upper() == "Y": rDrop = True
+        if input("  ").upper() == "Y": rDrop = True
         else: rDrop = False
         try:
             if rDrop:
@@ -243,17 +274,17 @@ def modifyNginx():
 
 if __name__ == "__main__":
     printc("Xtream UI - Installer Mirror", col.OKGREEN, 2)
-    print("%s │ NOTE: this is a forked mirror of original installer from https://xtream-ui.com/install/install.py %s" % (col.OKGREEN, col.ENDC))
-    print("%s │ Check out the mirror repo: https://xtream-ui.org %s" % (col.OKGREEN, col.ENDC))
-    print("%s │ and https://github.com/xtream-ui-org/xtream-ui-install %s" % (col.OKGREEN, col.ENDC))
+    print(f"{col.OKGREEN} {box_vertical} NOTE: this is a forked mirror of original installer from https://xtream-ui.com/install/install.py {col.ENDC}")
+    print(f"{col.OKGREEN} {box_vertical} Check out the mirror repo: https://xtream-ui.org {col.ENDC}")
+    print(f"{col.OKGREEN} {box_vertical} and https://github.com/xtream-ui-org/xtream-ui-install {col.ENDC}")
     print(" ")
-    rType = raw_input("  Installation Type [MAIN, LB, UPDATE]: ")
+    rType = input("  Installation Type [MAIN, LB, UPDATE]: ")
     print(" ")
     if rType.upper() in ["MAIN", "LB"]:
         if rType.upper() == "LB":
-            rHost = raw_input("  Main Server IP Address: ")
-            rPassword = raw_input("  MySQL Password: ")
-            try: rServerID = int(raw_input("  Load Balancer Server ID: "))
+            rHost = input("  Main Server IP Address: ")
+            rPassword = input("  MySQL Password: ")
+            try: rServerID = int(input("  Load Balancer Server ID: "))
             except: rServerID = -1
             print(" ")
         else:
@@ -265,7 +296,7 @@ if __name__ == "__main__":
         rPort = 7999
         if len(rHost) > 0 and len(rPassword) > 0 and rServerID > -1:
             printc("Start installation? Y/N", col.WARNING)
-            if raw_input("  ").upper() == "Y":
+            if input("  ").upper() == "Y":
                 print(" ")
                 rRet = prepare(rType.upper())
                 if not install(rType.upper()): sys.exit(1)
@@ -288,7 +319,7 @@ if __name__ == "__main__":
     elif rType.upper() == "UPDATE":
         if os.path.exists("/home/xtreamcodes/iptv_xtream_codes/wwwdir/api.php"):
             printc("Update Admin Panel? Y/N?", col.WARNING)
-            if raw_input("  ").upper() == "Y":
+            if input("  ").upper() == "Y":
                 if not update(rType.upper()): sys.exit(1)
                 printc("Installation completed!", col.OKGREEN, 2)
                 start()
